@@ -2,7 +2,7 @@ import { translateAlerts } from './i18n.js';
 import { doms } from './global.js';
 import qrcode from 'qrcode-generator';
 import bs58 from 'bs58';
-import { cChainParams } from './chain_params';
+import { BIP21_PREFIX, cChainParams } from './chain_params';
 import { hexToBytes, bytesToHex } from './utils.js';
 
 /* MPW constants */
@@ -142,12 +142,12 @@ export function createQR(strData = '', domImg, size = 4) {
  */
 export function parseBIP21Request(strReq) {
     // Format should match: pivx:addr[?amount=x&label=x]
-    if (!strReq.includes(':')) return false;
+    if (!strReq.includes(BIP21_PREFIX + ':')) return false;
 
     const [addressPart, optionsPart] = strReq.includes('?')
         ? strReq.split('?')
         : [strReq, false];
-    const strAddress = addressPart.substring(addressPart.indexOf(':') + 1); // remove 'pivx:' prefix
+    const strAddress = addressPart.substring(BIP21_PREFIX.length + 1); // remove 'pivx:' prefix
     let cOptions = {};
 
     // Ensure the address is valid
