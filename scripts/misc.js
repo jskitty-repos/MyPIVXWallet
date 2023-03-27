@@ -135,6 +135,40 @@ export function createQR(strData = '', domImg, size = 4) {
     domImg.firstChild.style.borderRadius = '8px';
 }
 
+/**
+ * Attempt to safely parse a BIP21 Payment Request
+ * @param {string} strReq - BIP21 Payment Request string
+ * @returns {object | false}
+ */
+export function parseBIP21Request(strReq) {
+    // Format should match: pivx:addr[?amount=x&label=x]
+    if (!strReq.includes(':')) return false;
+
+    const [addressPart, optionsPart] = strReq.includes('?')
+        ? strReq.split('?')
+        : [strReq, false];
+    const strAddress = addressPart.substring(addressPart.indexOf(':') + 1); // remove 'pivx:' prefix
+    let cOptions = {};
+
+    // Ensure the address is valid
+    if (
+        strAddress.length !== 34 ||
+        !cChainParams.current.PUBKEY_PREFIX.includes(strAddress[0])
+    ) {
+        return false;
+    }
+
+    if (optionsPart) {
+        cOptions = Object.fromEntries(
+            optionsPart
+                .split('&')
+                .map((opt) => opt.split('=').map(decodeURIComponent))
+        );
+    }
+
+    return { address: strAddress, options: cOptions };
+}
+
 //generate private key for masternodes
 export async function generateMnPrivkey() {
     // maximum value for a decoded private key

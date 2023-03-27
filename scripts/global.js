@@ -18,7 +18,13 @@ import {
     cMarket,
     strCurrency,
 } from './settings.js';
-import { createAlert, confirmPopup, sanitizeHTML, MAP_B58 } from './misc.js';
+import {
+    createAlert,
+    confirmPopup,
+    sanitizeHTML,
+    MAP_B58,
+    parseBIP21Request,
+} from './misc.js';
 import { cChainParams, COIN, MIN_PASS_LENGTH } from './chain_params.js';
 import { decrypt } from './aes-gcm.js';
 
@@ -26,6 +32,7 @@ import { registerWorker } from './native.js';
 import { refreshPriceDisplay } from './prices.js';
 import { Address6 } from 'ip-address';
 import { getEventEmitter } from './event_bus.js';
+import { scanQRCode } from './scanner.js';
 
 export let doms = {};
 
@@ -72,6 +79,9 @@ export function start() {
         domGuiViewKey: document.getElementById('guiViewKey'),
         domModalQR: document.getElementById('ModalQR'),
         domModalQrLabel: document.getElementById('ModalQRLabel'),
+        domModalQRReader: document.getElementById('qrReaderModal'),
+        domQrReaderStream: document.getElementById('qrReaderStream'),
+        domCloseQrReaderBtn: document.getElementById('closeQrReader'),
         domPrefix: document.getElementById('prefix'),
         domPrefixNetwork: document.getElementById('prefixNetwork'),
         domWalletToggle: document.getElementById('wToggle'),
@@ -407,6 +417,40 @@ export function selectMaxBalance(domValueInput, fCold = false) {
         );
 }
 
+/**
+ * Prompt a QR scan for a Payment (Address or BIP21)
+ */
+export async function openSendQRScanner() {
+    const cScan = await scanQRCode();
+
+    if (!cScan || !cScan.data) return;
+
+    /* Check what data the scan contains - for the various QR request types */
+
+    // Plain address (Length matches)
+    if (cScan.data.length === 34) {
+        return guiPreparePayment(cScan.data);
+    }
+
+    // BIP21 Payment Request (Optional 'amount' and 'label')
+    const cBIP21Req = parseBIP21Request(cScan.data);
+    if (cBIP21Req) {
+        return guiPreparePayment(
+            cBIP21Req.address,
+            cBIP21Req.options.amount || 0,
+            cBIP21Req.options.label || ''
+        );
+    }
+
+    // No idea what this is...
+    createAlert(
+        'warning',
+        `"${cScan.data}" is not a valid payment receiver`,
+        [],
+        7500
+    );
+}
+
 export async function updateStakingRewardsGUI() {
     const network = getNetwork();
     const arrRewards = await network.getStakingRewards();
@@ -586,10 +630,16 @@ export function guiPreparePayment(strTo = '', nAmount = 0, strDesc = '') {
     // Switch to the Dashboard
     doms.domDashboard.click();
 
-    // Open the Send menu (with a small timeout post-load to allow for CSS loading)
-    setTimeout(() => {
-        toggleBottomMenu('transferMenu', 'transferAnimation');
-    }, 300);
+    // Open the Send menu, if not already open (with a small timeout post-load to allow for CSS loading)
+    if (
+        document
+            .getElementById('transferMenu')
+            .classList.contains('transferAnimation')
+    ) {
+        setTimeout(() => {
+            toggleBottomMenu('transferMenu', 'transferAnimation');
+        }, 300);
+    }
 
     // Update the conversion value
     updateAmountInputPair(
@@ -598,8 +648,10 @@ export function guiPreparePayment(strTo = '', nAmount = 0, strDesc = '') {
         true
     );
 
-    // Focus on the coin input box
-    doms.domSendAmountCoins.focus();
+    // Focus on the coin input box (if no pre-fill was specified)
+    if (nAmount <= 0) {
+        doms.domSendAmountCoins.focus();
+    }
 }
 
 export function hideAllWalletOptions() {
@@ -1209,7 +1261,9 @@ function renderProposals(arrProposals, fContested) {
         // IMPORTANT: Sanitise all of our HTML or a rogue server or malicious proposal could perform a cross-site scripting attack
         domNameAndURL.innerHTML = `<a class="active" href="${sanitizeHTML(
             cProposal.URL
-        )}" target="_blank" rel="noopener noreferrer"><b>${sanitizeHTML(cProposal.Name)}</b></a>`;
+        )}" target="_blank" rel="noopener noreferrer"><b>${sanitizeHTML(
+            cProposal.Name
+        )}</b></a>`;
 
         // Payment Schedule and Amounts
         const domPayments = domRow.insertCell();
