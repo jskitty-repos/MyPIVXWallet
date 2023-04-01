@@ -53,4 +53,3 @@ export { Masternode };
 export { getNetwork } from './network.js';
 const toggleNetwork = () => getNetwork().toggle();
 export { toggleNetwork };
-

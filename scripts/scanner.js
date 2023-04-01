@@ -41,13 +41,16 @@ export async function scanQRCode() {
         );
 
         // Attempt to start scanning, then display the UI
-        scanner.start().then(() => {
-            doms.domModalQRReader.classList.add('show');
-            doms.domModalQRReader.style.display = 'block';
-        }).catch(err => {
-            createAlert('warning', err);
-            reject(err);
-        });
+        scanner
+            .start()
+            .then(() => {
+                doms.domModalQRReader.classList.add('show');
+                doms.domModalQRReader.style.display = 'block';
+            })
+            .catch((err) => {
+                createAlert('warning', err);
+                reject(err);
+            });
 
         // If the close button is clicked, shutdown the scanner and destroy it to free memory
         doms.domCloseQrReaderBtn.addEventListener('click', () => {

@@ -155,7 +155,7 @@ export function parseBIP21Request(strReq) {
     if (
         // Standard address
         (strAddress.length !== 34 ||
-        !cChainParams.current.PUBKEY_PREFIX.includes(strAddress[0])) &&
+            !cChainParams.current.PUBKEY_PREFIX.includes(strAddress[0])) &&
         // Shield address
         !isValidBech32(strAddress).valid
     ) {
@@ -204,7 +204,7 @@ export async function generateMnPrivkey() {
  */
 export function isValidBech32(str) {
     try {
-        return { valid: true, res: bech32.decode(str) }
+        return { valid: true, res: bech32.decode(str) };
     } catch (e) {
         return { valid: false, res: e };
     }

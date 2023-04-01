@@ -431,7 +431,10 @@ export async function openSendQRScanner() {
     /* Check what data the scan contains - for the various QR request types */
 
     // Plain address (Length and prefix matches)
-    if (cScan.data.length === 34 && cChainParams.current.PUBKEY_PREFIX.includes(cScan.data[0])) {
+    if (
+        cScan.data.length === 34 &&
+        cChainParams.current.PUBKEY_PREFIX.includes(cScan.data[0])
+    ) {
         return guiPreparePayment(cScan.data);
     }
 
@@ -453,7 +456,10 @@ export async function openSendQRScanner() {
     // No idea what this is...
     createAlert(
         'warning',
-        `"${cScan.data.substring(0, Math.min(cScan.data.length, 6))}…" is not a valid payment receiver`,
+        `"${cScan.data.substring(
+            0,
+            Math.min(cScan.data.length, 6)
+        )}…" is not a valid payment receiver`,
         [],
         7500
     );
