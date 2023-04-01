@@ -26,6 +26,7 @@ import {
     sanitizeHTML,
     MAP_B58,
     parseBIP21Request,
+    isValidBech32,
 } from './misc.js';
 import { cChainParams, COIN, MIN_PASS_LENGTH } from './chain_params.js';
 import { decrypt } from './aes-gcm.js';
@@ -429,8 +430,13 @@ export async function openSendQRScanner() {
 
     /* Check what data the scan contains - for the various QR request types */
 
-    // Plain address (Length matches)
-    if (cScan.data.length === 34) {
+    // Plain address (Length and prefix matches)
+    if (cScan.data.length === 34 && cChainParams.current.PUBKEY_PREFIX.includes(cScan.data[0])) {
+        return guiPreparePayment(cScan.data);
+    }
+
+    // Shield address (Valid bech32 string)
+    if (isValidBech32(cScan.data).valid) {
         return guiPreparePayment(cScan.data);
     }
 
@@ -447,7 +453,7 @@ export async function openSendQRScanner() {
     // No idea what this is...
     createAlert(
         'warning',
-        `"${cScan.data}" is not a valid payment receiver`,
+        `"${cScan.data.substring(0, Math.min(cScan.data.length, 6))}…" is not a valid payment receiver`,
         [],
         7500
     );

@@ -4,6 +4,7 @@ import qrcode from 'qrcode-generator';
 import bs58 from 'bs58';
 import { BIP21_PREFIX, cChainParams } from './chain_params';
 import { hexToBytes, bytesToHex } from './utils.js';
+import { bech32 } from 'bech32';
 
 /* MPW constants */
 export const pubKeyHashNetworkLen = 21;
@@ -152,8 +153,11 @@ export function parseBIP21Request(strReq) {
 
     // Ensure the address is valid
     if (
-        strAddress.length !== 34 ||
-        !cChainParams.current.PUBKEY_PREFIX.includes(strAddress[0])
+        // Standard address
+        (strAddress.length !== 34 ||
+        !cChainParams.current.PUBKEY_PREFIX.includes(strAddress[0])) &&
+        // Shield address
+        !isValidBech32(strAddress).valid
     ) {
         return false;
     }
@@ -185,6 +189,25 @@ export async function generateMnPrivkey() {
         }
     }
     return await convertMnPrivKeyFromHex(priv_key);
+}
+
+/**
+ * @typedef {object} Bech32Check
+ * @property {boolean} valid - If the string is a valid bech32 address
+ * @property {object} res - The results of the bech32 decoding
+ */
+
+/**
+ * A safe bech32 wrapper for quickly checking if an address is valid
+ * @param {string} str - Bech32 Address
+ * @returns {Bech32Check} - Both the validity and decoding results
+ */
+export function isValidBech32(str) {
+    try {
+        return { valid: true, res: bech32.decode(str) }
+    } catch (e) {
+        return { valid: false, res: e };
+    }
 }
 
 export async function convertMnPrivKeyFromHex(hexStr) {

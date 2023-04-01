@@ -12,7 +12,7 @@ let scanner = null;
 
 /**
  * Asynchronously prompt a QR code scan, returning the QR string data on resolve or a `false` rejection on cancel or error
- * @returns {Promise<string> | Promise<false>} - QR String data | false
+ * @returns {Promise<string> | false} - QR String data | false
  */
 export async function scanQRCode() {
     // Don't create multiple scanners; in case of button spam
@@ -21,6 +21,7 @@ export async function scanQRCode() {
     // Check for Camera support
     if (!QrScanner.hasCamera()) {
         createAlert('warning', ALERTS.NO_CAMERAS, [], 3000);
+        return false;
     }
 
     return new Promise((resolve, reject) => {
