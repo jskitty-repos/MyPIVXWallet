@@ -2,9 +2,9 @@ import { translateAlerts } from './i18n.js';
 import { doms } from './global.js';
 import qrcode from 'qrcode-generator';
 import bs58 from 'bs58';
-import { BIP21_PREFIX, cChainParams } from './chain_params';
-import { hexToBytes, bytesToHex } from './utils.js';
 import { bech32 } from 'bech32';
+import { BIP21_PREFIX, cChainParams } from './chain_params';
+import { dSHA256 } from './utils.js';
 
 /* MPW constants */
 export const pubKeyHashNetworkLen = 21;
@@ -173,24 +173,6 @@ export function parseBIP21Request(strReq) {
     return { address: strAddress, options: cOptions };
 }
 
-//generate private key for masternodes
-export async function generateMnPrivkey() {
-    // maximum value for a decoded private key
-    let max_decoded_value =
-        115792089237316195423570985008687907852837564279074904382605163141518161494337n;
-    let valid = false;
-    let priv_key = 0;
-    while (!valid) {
-        priv_key = bytesToHex(getSafeRand(32));
-        let decoded_priv_key = BigInt('0x' + priv_key);
-
-        if (0 < decoded_priv_key && decoded_priv_key < max_decoded_value) {
-            valid = true;
-        }
-    }
-    return await convertMnPrivKeyFromHex(priv_key);
-}
-
 /**
  * @typedef {object} Bech32Check
  * @property {boolean} valid - If the string is a valid bech32 address
@@ -210,47 +192,50 @@ export function isValidBech32(str) {
     }
 }
 
-export async function convertMnPrivKeyFromHex(hexStr) {
-    //prefixes
-    let WIF_PREFIX = 212;
-    let TESTNET_WIF_PREFIX = 239;
-    let base58_secret = cChainParams.current.isTestnet
-        ? TESTNET_WIF_PREFIX
-        : WIF_PREFIX;
+/**
+ * Generate an encoded private key for masternodes
+ */
+export function generateMasternodePrivkey() {
+    // Prefix the network byte with the private key (32 random bytes)
+    const data = [cChainParams.current.SECRET_KEY, ...getSafeRand(32)];
 
-    //convert the hexStr+ initial prefix to byte array hexToBytes(string)
-    let data = [...hexToBytes(hexStr)];
-    data.unshift(base58_secret);
-
-    //generate the checksum with double sha256 hashing
-    let checksum = hexToBytes(await hash(hexToBytes(await hash(data)))).slice(
-        0,
-        4
-    );
-
-    //concatenate data and checksum
-    for (const byte of checksum) {
-        data.push(byte);
-    }
-
-    return bs58.encode(data);
-}
-
-//sha256 a bytearray and return the hash in hexadecimal
-export async function hash(byteArray) {
-    const utf8 = new Uint8Array(byteArray);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray
-        .map((bytes) => bytes.toString(16).padStart(2, '0'))
-        .join('');
-    return hashHex;
+    // Compute and concatenate the checksum, then encode the private key as Base58
+    return bs58.encode([...data, ...dSHA256(data).slice(0, 4)]);
 }
 
 export function sanitizeHTML(text) {
     const element = document.createElement('div');
     element.innerText = text;
     return element.innerHTML;
+}
+
+/**
+ * Check if a string is valid Base64 encoding
+ * @param {string} str - String to check
+ * @returns {boolean}
+ */
+export function isBase64(str) {
+    const base64Regex = /^[A-Za-z0-9+/=]+$/;
+
+    // Check if the string contains only Base64 characters:
+    if (!base64Regex.test(str)) {
+        return false;
+    }
+
+    // Check if the length is a multiple of 4 (required for Base64):
+    if (str.length % 4 !== 0) {
+        return false;
+    }
+
+    // Try decoding the Base64 string to check for errors:
+    try {
+        atob(str);
+    } catch (e) {
+        return false;
+    }
+
+    // The string is likely Base64-encoded:
+    return true;
 }
 
 /**
